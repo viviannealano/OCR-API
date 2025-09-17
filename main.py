@@ -18,7 +18,7 @@ app.add_middleware(
 )
 
 
-genai.configure(api_key="AIzaSyDof_h470pTXw9njYrbsXXoa9s6T5RjU-Q")
+genai.configure(api_key="AIzaSyDn8KokMpev-TTiKtloQz9UKcBAVza4YyA")
 
 @app.get("/")
 async def root():
