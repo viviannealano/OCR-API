@@ -7,16 +7,14 @@ import os
 
 app = FastAPI()
 
-
 # CORS Middleware 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://educart-capstone.vercel.app", "http://localhost:3000"],  # Or your frontend URL: ["https://educart.vercel.app"]
+    allow_origins=["https://educart-capstone.vercel.app", "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 genai.configure(api_key="AIzaSyB690wgnooP_PTKnIOMeH3wzIOmtVLdkKA")
 
@@ -30,16 +28,50 @@ async def ocr(image: UploadFile = File(...)):
     image_bytes = await image.read()
     image = Image.open(io.BytesIO(image_bytes))
 
-   
     model = genai.GenerativeModel("gemini-2.5-flash")
+
     response = model.generate_content([
-        "If this image is a valid ID (e.g., government-issued or student ID), extract and return ONLY the full name from it. Disregard the middle name or middle initial—return only the first name (including second given name if present) and last name. If it is not an ID, just return this exact message: 'This is not an ID.'",
+        """
+        You are an OCR verification system for a university marketplace app (EduCart). 
+        Analyze the uploaded image and determine whether it is a valid identification card 
+        (student, faculty, alumni, or government-issued ID).
+
+        1. If the image does NOT contain an ID (selfie, screenshot, paper, random object, etc.), 
+           reply EXACTLY:
+           "This is not an ID."
+
+        2. If the image appears to be an ID but:
+           - the text is blurred,
+           - the name area is unreadable,
+           - the quality is too low,
+           - the ID is cropped,
+           - lighting makes the text unclear,
+           reply EXACTLY:
+           "The ID is too blurry or unreadable."
+
+           Do NOT guess the name.
+
+        3. If the ID is valid AND readable:
+           - Extract ONLY the person's name.
+           - Ignore middle names and middle initials.
+           - Output EXACTLY: First Name + Last Name.
+           - If the first name includes multiple given names (ex: “Mary Ann”), keep them.
+
+        VERY IMPORTANT RULES:
+        - Output ONLY the extracted name OR one of the two exact messages.
+        - Never give explanations.
+        - Never add extra text.
+        - Never guess names when text is unclear.
+        """,
         image
     ])
 
     text_response = response.text.strip()
 
-    if "This is not an ID" in text_response:
+    if text_response == "This is not an ID.":
         return {"Error": "This is not an ID."}
-    else:
-        return {"Name": text_response}
+
+    if text_response == "The ID is too blurry or unreadable.":
+        return {"Error": "The ID is too blurry or unreadable."}
+
+    return {"Name": text_response}
