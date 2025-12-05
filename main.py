@@ -41,8 +41,19 @@ async def ocr(image: UploadFile = File(...)):
         Analyze the uploaded image and determine whether it is a valid identification card 
         (student, faculty, alumni, or government-issued ID).
 
-        Make sure you extract the FULL NAME of the user as written on the ID 
-        (the complete first name—including all given names—and the complete last name).
+        Make sure you extract the user's FULL NAME **without any middle name or middle initial**.
+        The final output must contain ONLY:
+        - The complete first name (including multiple given names, e.g., “Mary Ann”)
+        - The complete last name
+        DO NOT include middle names or middle initials even if they appear on the ID.
+
+        Some IDs show:
+        - Given names in large text (e.g., “ISAIAH LEON”)
+        - Surname on a separate line (e.g., “V. General”)
+        In such cases:
+        - REMOVE the middle initial (“V.”)
+        - KEEP ONLY the surname (“General”)
+        - Output: “Isaiah Leon General”
 
         1. If the image does NOT contain an ID (selfie, screenshot, paper, random object, etc.), 
            reply EXACTLY:
@@ -57,16 +68,13 @@ async def ocr(image: UploadFile = File(...)):
            reply EXACTLY:
            "The ID is too blurry or unreadable."
 
-           Do NOT guess the name.
-
         3. If the ID is valid AND readable:
-           - Extract ONLY the person's FULL NAME.
-           - Ignore middle names and middle initials.
-           - Output EXACTLY: First Name + Last Name.
-           - If the first name includes multiple given names (ex: “Mary Ann”), keep them.
+           - Extract ONLY the first name(s) and last name.
+           - Remove any middle names or middle initials.
+           - Return the name in normal capitalization (e.g., “Isaiah Leon General”).
 
         VERY IMPORTANT RULES:
-        - Output ONLY the extracted name OR one of the two exact messages.
+        - Output ONLY the cleaned full name OR one of the two exact error messages.
         - Never give explanations.
         - Never add extra text.
         - Never guess names when text is unclear.
