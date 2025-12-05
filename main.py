@@ -41,7 +41,10 @@ async def ocr(image: UploadFile = File(...)):
         Analyze the uploaded image and determine whether it is a valid identification card 
         (student, faculty, alumni, or government-issued ID).
 
-        1. If the image does NOT contain an ID, 
+        Make sure you extract the FULL NAME of the user as written on the ID 
+        (the complete first name—including all given names—and the complete last name).
+
+        1. If the image does NOT contain an ID (selfie, screenshot, paper, random object, etc.), 
            reply EXACTLY:
            "This is not an ID."
 
@@ -57,7 +60,7 @@ async def ocr(image: UploadFile = File(...)):
            Do NOT guess the name.
 
         3. If the ID is valid AND readable:
-           - Extract ONLY the person's name.
+           - Extract ONLY the person's FULL NAME.
            - Ignore middle names and middle initials.
            - Output EXACTLY: First Name + Last Name.
            - If the first name includes multiple given names (ex: “Mary Ann”), keep them.
