@@ -24,9 +24,14 @@ async def root():
 
 @app.post("/api/ocr")
 async def ocr(image: UploadFile = File(...)):
-    # Read and open the image
+    # Read image bytes
     image_bytes = await image.read()
-    image = Image.open(io.BytesIO(image_bytes))
+
+    # Prepare image for Gemini
+    image_part = {
+        "mime_type": image.content_type,
+        "data": image_bytes
+    }
 
     model = genai.GenerativeModel("gemini-2.5-flash")
 
@@ -63,7 +68,7 @@ async def ocr(image: UploadFile = File(...)):
         - Never add extra text.
         - Never guess names when text is unclear.
         """,
-        image
+        image_part  # ← THIS now correctly includes the uploaded image
     ])
 
     text_response = response.text.strip()
@@ -75,3 +80,4 @@ async def ocr(image: UploadFile = File(...)):
         return {"Error": "The ID is too blurry or unreadable."}
 
     return {"Name": text_response}
+
