@@ -3,91 +3,68 @@ from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 import google.generativeai as genai
 import io
-import base64
+import os
 
 app = FastAPI()
 
 # CORS Middleware 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://educart-capstone.vercel.app",
-        "http://localhost:3000"
-    ],
+    allow_origins=["https://educart-capstone.vercel.app", "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Gemini API Key
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-
 
 @app.get("/")
 async def root():
     return {"message": "Welcome to the Gemini OCR API"}
 
-
 @app.post("/api/ocr")
 async def ocr(image: UploadFile = File(...)):
-    # Read image bytes
+    # Read and open the image
     image_bytes = await image.read()
-
-    # Convert to base64
-    image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+    image = Image.open(io.BytesIO(image_bytes))
 
     model = genai.GenerativeModel("gemini-2.5-flash")
 
-    # NEW FORMAT: using messages + parts
-    response = model.generate_content(
-        messages=[
-            {
-                "role": "user",
-                "parts": [
-                    {
-                        "text": """
-                        You are an OCR verification system for a university marketplace app (EduCart). 
-                        Analyze the uploaded image and determine whether it is a valid identification card 
-                        (student, faculty, alumni, or government-issued ID).
+    response = model.generate_content([
+        """
+        You are an OCR verification system for a university marketplace app (EduCart). 
+        Analyze the uploaded image and determine whether it is a valid identification card 
+        (student, faculty, alumni, or government-issued ID).
 
-                        1. If the image does NOT contain an ID (selfie, screenshot, paper, random object, etc.), 
-                           reply EXACTLY:
-                           "This is not an ID."
+        1. If the image does NOT contain an ID (selfie, screenshot, paper, random object, etc.), 
+           reply EXACTLY:
+           "This is not an ID."
 
-                        2. If the image appears to be an ID but:
-                           - the text is blurred,
-                           - the name area is unreadable,
-                           - the quality is too low,
-                           - the text is cropped,
-                           - lighting makes the text unclear,
-                           reply EXACTLY:
-                           "The ID is too blurry or unreadable."
+        2. If the image appears to be an ID but:
+           - the text is blurred,
+           - the name area is unreadable,
+           - the quality is too low,
+           - the ID is cropped,
+           - lighting makes the text unclear,
+           reply EXACTLY:
+           "The ID is too blurry or unreadable."
 
-                           Do NOT guess the name.
+           Do NOT guess the name.
 
-                        3. If the ID is valid AND readable:
-                           - Extract ONLY the person's name.
-                           - Ignore middle names and middle initials.
-                           - Output EXACTLY: First Name + Last Name.
-                           - If the first name includes multiple given names (ex: “Mary Ann”), keep them.
+        3. If the ID is valid AND readable:
+           - Extract ONLY the person's name.
+           - Ignore middle names and middle initials.
+           - Output EXACTLY: First Name + Last Name.
+           - If the first name includes multiple given names (ex: “Mary Ann”), keep them.
 
-                        IMPORTANT:
-                        - Output ONLY the extracted name OR one of the exact error messages.
-                        - Never explain.
-                        - Never add extra text.
-                        - Never guess the name if text is unclear.
-                        """
-                    },
-                    {
-                        "inline_data": {
-                            "mime_type": "image/jpeg",
-                            "data": image_base64
-                        }
-                    }
-                ]
-            }
-        ]
-    )
+        VERY IMPORTANT RULES:
+        - Output ONLY the extracted name OR one of the two exact messages.
+        - Never give explanations.
+        - Never add extra text.
+        - Never guess names when text is unclear.
+        """,
+        image
+    ])
 
     text_response = response.text.strip()
 
