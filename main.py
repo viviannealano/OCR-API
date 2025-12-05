@@ -41,7 +41,7 @@ async def ocr(image: UploadFile = File(...)):
         Analyze the uploaded image and determine whether it is a valid identification card 
         (student, faculty, alumni, or government-issued ID).
 
-        1. If the image does NOT contain an ID (selfie, screenshot, paper, random object, etc.), 
+        1. If the image does NOT contain an ID, 
            reply EXACTLY:
            "This is not an ID."
 
