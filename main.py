@@ -30,68 +30,71 @@ async def root():
 
 @app.post("/api/ocr")
 async def ocr(image: UploadFile = File(...)):
-    # Read the image bytes
+    # Read image bytes
     image_bytes = await image.read()
 
-    # Convert image bytes → Base64
+    # Convert to base64
     image_base64 = base64.b64encode(image_bytes).decode("utf-8")
 
-    # Prepare multimodal messages
-    messages = [
-        {
-            "role": "user",
-            "parts": [
-                {
-                    "text": """
-                    You are an OCR verification system for a university marketplace app (EduCart). 
-                    Analyze the uploaded image and determine whether it is a valid identification card 
-                    (student, faculty, alumni, or government-issued ID).
-
-                    1. If the image does NOT contain an ID (selfie, paper, screenshot, object, etc.), reply EXACTLY:
-                       "This is not an ID."
-
-                    2. If the image appears to be an ID but:
-                       - text is blurred,
-                       - name is unreadable,
-                       - quality is too low,
-                       - photo is cropped or unclear,
-                       reply EXACTLY:
-                       "The ID is too blurry or unreadable."
-
-                    3. If the ID is valid AND readable:
-                       - Extract ONLY the person's name.
-                       - Ignore middle names and middle initials.
-                       - Output: First Name + Last Name only.
-                       - Include multiple given names if part of the first name (e.g., “Mary Ann”).
-
-                    VERY IMPORTANT:
-                    - Output should ONLY be the extracted name or one of the EXACT error messages.
-                    - Never explain.
-                    - Never guess the name when unclear.
-                    """
-                },
-                {
-                    "inline_data": {
-                        "mime_type": "image/jpeg",
-                        "data": image_base64
-                    }
-                }
-            ]
-        }
-    ]
-
-    # Call Gemini Model
     model = genai.GenerativeModel("gemini-2.5-flash")
-    response = model.generate_content(messages)
 
-    output = response.text.strip()
+    # NEW FORMAT: using messages + parts
+    response = model.generate_content(
+        messages=[
+            {
+                "role": "user",
+                "parts": [
+                    {
+                        "text": """
+                        You are an OCR verification system for a university marketplace app (EduCart). 
+                        Analyze the uploaded image and determine whether it is a valid identification card 
+                        (student, faculty, alumni, or government-issued ID).
 
-    # Handle exact responses
-    if output == "This is not an ID.":
+                        1. If the image does NOT contain an ID (selfie, screenshot, paper, random object, etc.), 
+                           reply EXACTLY:
+                           "This is not an ID."
+
+                        2. If the image appears to be an ID but:
+                           - the text is blurred,
+                           - the name area is unreadable,
+                           - the quality is too low,
+                           - the text is cropped,
+                           - lighting makes the text unclear,
+                           reply EXACTLY:
+                           "The ID is too blurry or unreadable."
+
+                           Do NOT guess the name.
+
+                        3. If the ID is valid AND readable:
+                           - Extract ONLY the person's name.
+                           - Ignore middle names and middle initials.
+                           - Output EXACTLY: First Name + Last Name.
+                           - If the first name includes multiple given names (ex: “Mary Ann”), keep them.
+
+                        IMPORTANT:
+                        - Output ONLY the extracted name OR one of the exact error messages.
+                        - Never explain.
+                        - Never add extra text.
+                        - Never guess the name if text is unclear.
+                        """
+                    },
+                    {
+                        "inline_data": {
+                            "mime_type": "image/jpeg",
+                            "data": image_base64
+                        }
+                    }
+                ]
+            }
+        ]
+    )
+
+    text_response = response.text.strip()
+
+    if text_response == "This is not an ID.":
         return {"Error": "This is not an ID."}
 
-    if output == "The ID is too blurry or unreadable.":
+    if text_response == "The ID is too blurry or unreadable.":
         return {"Error": "The ID is too blurry or unreadable."}
 
-    # Otherwise, return extracted name
-    return {"Name": output}
+    return {"Name": text_response}
