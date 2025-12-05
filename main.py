@@ -16,7 +16,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-genai.configure(api_key="AIzaSyB690wgnooP_PTKnIOMeH3wzIOmtVLdkKA")
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 @app.get("/")
 async def root():
